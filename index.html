@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Arch.ai</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 800px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+      background: #f9f9f9;
+      color: #222;
+    }
+    textarea {
+      width: 100%;
+      height: 150px;
+      padding: 0.75rem;
+      font-size: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      box-sizing: border-box;
+    }
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin: 1rem 0;
+    }
+    button {
+      padding: 0.6rem 1.2rem;
+      font-size: 1rem;
+      font-weight: bold;
+      color: #fff;
+      background: #0066cc;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    button:hover { background: #0052a3; }
+    #results {
+      margin-top: 1.5rem;
+      background: #fff;
+      border: 1px solid #e0e0e0;
+      border-radius: 6px;
+      padding: 1rem;
+    }
+    .match-card {
+      border-bottom: 1px solid #eee;
+      padding: 0.5rem 0;
+    }
+    .match-card:last-child { border-bottom: none; }
+    .score {
+      font-size: 0.85rem;
+      background: #eef6ff;
+      color: #0052a3;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Arch.AI</h2>
+  <label for="inputText">Simple Javascript English to Proto-Indo-European translator:</label>
+  <textarea id="inputText" placeholder="Type like a caveman."></textarea>
+
+  <div class="controls">
+    <button id="scanBtn">Pen</button>
+    <label>
+      Similarity Threshold: 
+      <input type="number" id="threshold" value="0.7" min="0.5" max="1.0" step="0.01">
+    </label>
+  </div>
+
+  <div id="results">
+    <em>Awaiting your Pen...</em>
+  </div>
+
+  <!-- Load your generated dataset -->
+  <script src="./pie.js"></script>
+  <!-- Load the standalone processing script -->
+  <script src="./app.js"></script>
+</body>
+</html>
