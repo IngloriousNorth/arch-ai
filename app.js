@@ -1,21 +1,4 @@
 /**
- * Set of articles and prepositions to strip from the final output
- */
-const STOP_WORDS = new Set([
-  // Articles
-  'a', 'an', 'the',
-
-  // Prepositions
-  'about', 'above', 'across', 'after', 'against', 'along', 'amid', 'among',
-  'around', 'at', 'before', 'behind', 'below', 'beneath', 'beside', 'between',
-  'beyond', 'by', 'concerning', 'considering', 'despite', 'down', 'during',
-  'except', 'for', 'from', 'in', 'inside', 'into', 'like', 'near', 'of',
-  'off', 'on', 'onto', 'out', 'outside', 'over', 'past', 'regarding',
-  'since', 'through', 'throughout', 'to', 'toward', 'towards', 'under',
-  'underneath', 'until', 'unto', 'up', 'upon', 'with', 'within', 'without'
-]);
-
-/**
  * Calculates Jaro Similarity between two strings
  */
 function jaroDistance(s1, s2) {
@@ -99,52 +82,39 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    const entries = Object.entries(PIE_DICTIONARY);
+    const pieKeys = Object.keys(PIE_DICTIONARY);
 
-    // Split text by tokens (words, punctuation, whitespace)
+    // Split input while preserving spaces and punctuation
     const tokens = rawText.split(/(\s+|[^\w\s]+)/);
 
-    const translatedSentence = tokens
-      .map(token => {
-        // Skip whitespace/punctuation formatting checks initially
-        if (!token || /^\s+$/.test(token) || /^[^\w\s]+$/.test(token)) {
-          return token;
+    const translatedSentence = tokens.map(token => {
+      // Preserve whitespace and punctuation intact
+      if (!token || /^\s+$/.test(token) || /^[^\w\s]+$/.test(token)) {
+        return token;
+      }
+
+      const cleanWord = token.toLowerCase();
+      let bestKey = null;
+      let highestScore = 0;
+
+      for (let i = 0; i < pieKeys.length; i++) {
+        const pieKey = pieKeys[i];
+        const score = jaroWinkler(cleanWord, pieKey);
+
+        if (score >= threshold && score > highestScore) {
+          highestScore = score;
+          bestKey = pieKey;
         }
+      }
 
-        const cleanWord = token.toLowerCase();
+      // Output ONLY the English definition if a match passes the threshold
+      if (bestKey) {
+        return PIE_DICTIONARY[bestKey];
+      }
 
-        // Check if the word is an article or preposition; if so, return empty string to delete it
-        if (STOP_WORDS.has(cleanWord)) {
-          return '';
-        }
-
-        const stem = stemmer(cleanWord);
-
-        let bestMatchValue = null;
-        let highestScore = 0;
-
-        for (let i = 0; i < entries.length; i++) {
-          const [key, value] = entries[i];
-
-          const cleanKey = key.toLowerCase().replace(/[^a-z0-9]/g, '');
-          const cleanValue = String(value).toLowerCase().replace(/[^a-z0-9]/g, '');
-
-          const keyScore = jaroWinkler(stem, cleanKey);
-          const valueScore = jaroWinkler(stem, cleanValue);
-          const maxScore = Math.max(keyScore, valueScore);
-
-          if (maxScore >= threshold && maxScore > highestScore) {
-            highestScore = maxScore;
-            bestMatchValue = value;
-          }
-        }
-
-        return bestMatchValue ? bestMatchValue : token;
-      })
-      .join('')
-      // Clean up any double spaces left behind by deleted stop words
-      .replace(/\s+/g, ' ')
-      .trim();
+      // Keep original word as fallback if below threshold
+      return token;
+    }).join('');
 
     resultsDiv.innerHTML = `<p style="font-size: 1.1rem; line-height: 1.6;">${translatedSentence}</p>`;
   });
