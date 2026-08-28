@@ -3,7 +3,7 @@
  */
 const STOP_WORDS = new Set([
   // Articles & Pronouns
-  'a', 'an', 'the', 'that', 'there', 'what', 'who', 'where', 'why', 'when', 'how', 'is','and','or','not',
+  'a', 'an', 'the', 'that', 'there', 'what', 'who', 'where', 'why', 'when', 'how', 'is','and','or','not','it'
   // Prepositions
   'about', 'above', 'across', 'after', 'at', 'before', 'behind', 'below', 'beside', 
   'between', 'by', 'concerning', 'considering', 'despite', 'down', 'during', 'except', 
