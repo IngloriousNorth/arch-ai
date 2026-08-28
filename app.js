@@ -1,4 +1,21 @@
 /**
+ * Set of articles and prepositions to strip from the final output
+ */
+const STOP_WORDS = new Set([
+  // Articles
+  'a', 'an', 'the','that','there','what','who','where','why','when','how',
+  'is',
+  // Prepositions
+  'about', 'above', 'across', 'after',
+   'at', 'before', 'behind', 'below', 'beside', 'between',
+   'by', 'concerning', 'considering', 'despite', 'down', 'during',
+  'except', 'for', 'from', 'in', 'inside', 'into', 'like', 'near', 'of',
+  'off', 'on', 'onto', 'out', 'over', 'past', 
+  'through', 'throughout', 'to', 'toward', 'towards', 'under',
+   'until', 'unto', 'up', 'upon', 'with', 'without'
+]);
+
+/**
  * Calculates Jaro Similarity between two strings
  */
 function jaroDistance(s1, s2) {
@@ -87,34 +104,56 @@ document.addEventListener('DOMContentLoaded', () => {
     // Split input while preserving spaces and punctuation
     const tokens = rawText.split(/(\s+|[^\w\s]+)/);
 
-    const translatedSentence = tokens.map(token => {
-      // Preserve whitespace and punctuation intact
-      if (!token || /^\s+$/.test(token) || /^[^\w\s]+$/.test(token)) {
-        return token;
-      }
-
-      const cleanWord = token.toLowerCase();
-      let bestKey = null;
-      let highestScore = 0;
-
-      for (let i = 0; i < pieKeys.length; i++) {
-        const pieKey = pieKeys[i];
-        const score = jaroWinkler(cleanWord, pieKey);
-
-        if (score >= threshold && score > highestScore) {
-          highestScore = score;
-          bestKey = pieKey;
+    const translatedSentence = tokens
+      .map(token => {
+        // Preserve whitespace and punctuation intact
+        if (!token || /^\s+$/.test(token) || /^[^\w\s]+$/.test(token)) {
+          return token;
         }
-      }
 
-      // Output ONLY the English definition if a match passes the threshold
-      if (bestKey) {
-        return PIE_DICTIONARY[bestKey];
-      }
+        const cleanWord = token.toLowerCase();
 
-      // Keep original word as fallback if below threshold
-      return token;
-    }).join('');
+        // 1. Delete articles and prepositions
+        if (STOP_WORDS.has(cleanWord)) {
+          return '';
+        }
+
+        let bestKey = null;
+        let highestScore = 0;
+
+        // Stem calculation deferred until needed
+        const stem = typeof stemmer !== 'undefined' ? stemmer(cleanWord) : cleanWord;
+
+        for (let i = 0; i < pieKeys.length; i++) {
+          const pieKey = pieKeys[i];
+
+          // 2. First check unstemmed word to preserve short words like "good"
+          let score = jaroWinkler(cleanWord, pieKey);
+
+          // 3. If unstemmed score falls short, try stemmer as fallback for longer words
+          if (score < threshold && cleanWord.length > 4) {
+            const stemScore = jaroWinkler(stem, pieKey);
+            score = Math.max(score, stemScore);
+          }
+
+          if (score >= threshold && score > highestScore) {
+            highestScore = score;
+            bestKey = pieKey;
+          }
+        }
+
+        // Output ONLY the English definition if a match passes the threshold
+        if (bestKey) {
+          return PIE_DICTIONARY[bestKey];
+        }
+
+        // Keep original word as fallback if below threshold
+        return token;
+      })
+      .join('')
+      // Collapse any multiple spacing left behind by removed stop words
+      .replace(/\s+/g, ' ')
+      .trim();
 
     resultsDiv.innerHTML = `<p style="font-size: 1.1rem; line-height: 1.6;">${translatedSentence}</p>`;
   });
