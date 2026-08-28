@@ -118,7 +118,7 @@ document.addEventListener('DOMContentLoaded', () => {
           return '';
         }
 
-        cleanWord = stemmer(cleanWord);
+        const stem = stemmer(cleanWord);
 
         let bestMatchValue = null;
         let highestScore = 0;
@@ -129,8 +129,8 @@ document.addEventListener('DOMContentLoaded', () => {
           const cleanKey = key.toLowerCase().replace(/[^a-z0-9]/g, '');
           const cleanValue = String(value).toLowerCase().replace(/[^a-z0-9]/g, '');
 
-          const keyScore = jaroWinkler(cleanWord, cleanKey);
-          const valueScore = jaroWinkler(cleanWord, cleanValue);
+          const keyScore = jaroWinkler(stem, cleanKey);
+          const valueScore = jaroWinkler(stem, cleanValue);
           const maxScore = Math.max(keyScore, valueScore);
 
           if (maxScore >= threshold && maxScore > highestScore) {
