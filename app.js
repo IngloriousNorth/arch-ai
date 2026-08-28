@@ -118,6 +118,8 @@ document.addEventListener('DOMContentLoaded', () => {
           return '';
         }
 
+        cleanWord = stemmer(cleanWord);
+
         let bestMatchValue = null;
         let highestScore = 0;
 
