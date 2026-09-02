@@ -77,7 +77,7 @@ function jaroWinkler(s1, s2, p = 0.1) {
 }
 
 /**
- * Helper to safely call Porter Stemmer whether defined as a function or class/object
+ * Helper to safely call Porter Stemmer whether defined as a function or object/class
  */
 function getStem(word) {
   if (typeof stemmer === 'function') {
@@ -85,6 +85,9 @@ function getStem(word) {
   }
   if (typeof PorterStemmer !== 'undefined' && typeof PorterStemmer.stem === 'function') {
     return PorterStemmer.stem(word);
+  }
+  if (typeof PorterStemmer1980 !== 'undefined' && typeof PorterStemmer1980.stem === 'function') {
+    return PorterStemmer1980.stem(word);
   }
   return word;
 }
@@ -121,17 +124,68 @@ function findBestMatch(word, stem, dictionary, threshold) {
 }
 
 /**
- * Fetches data.number from the endpoint
+ * Fetches quantum entropy number from your Val.town endpoint
  */
 async function fetchModNumber() {
   try {
     const response = await fetch('https://selapian--2f58e6388fb311f1b0781607ee4eb77e.web.val.run/');
     const data = await response.json();
-    return typeof data.number === 'number' ? data.number : 0;
+    return typeof data.number === 'number' ? data.number : Math.floor(Math.random() * 10000);
   } catch (err) {
-    console.warn('Endpoint fetch failed, defaulting modulo to 1 (PIE):', err);
-    return 1;
+    console.warn('Endpoint fetch failed, defaulting to random number:', err);
+    return Math.floor(Math.random() * 10000);
   }
+}
+
+/**
+ * pickle_surprise
+ * Uses Math.random to decide whether to insert a QRNG word from the 
+ * top_english_words list before the English translation.
+ * 
+ * @param {string} translatedToken The translated PIE/Latin word
+ * @param {number} chance Probability threshold between 0 and 1 (default 0.5)
+ * @returns {Promise<string>} The original or prepended translated token
+ */
+async function pickle_surprise(translatedToken, chance = 0.5) {
+  if (!translatedToken || Math.random() > chance) {
+    return translatedToken;
+  }
+
+  const wordList = typeof TOP_SHARED_ENGLISH_WORDS !== 'undefined' ? TOP_SHARED_ENGLISH_WORDS : [];
+  if (wordList.length === 0) {
+    return translatedToken;
+  }
+
+  const num = await fetchModNumber();
+  const qrngIndex = Math.abs(num) % wordList.length;
+  const qrngWord = wordList[qrngIndex];
+
+  return `${qrngWord} ${translatedToken}`;
+}
+
+/**
+ * Interleaves 1 top English cognate word from top_english_words.js between each word
+ */
+async function interleaveCognateWords(wordsArray) {
+  if (!wordsArray || wordsArray.length <= 1) return wordsArray;
+
+  const wordList = typeof TOP_SHARED_ENGLISH_WORDS !== 'undefined' ? TOP_SHARED_ENGLISH_WORDS : [];
+  if (wordList.length === 0) return wordsArray;
+
+  const result = [];
+  for (let i = 0; i < wordsArray.length; i++) {
+    result.push(wordsArray[i]);
+
+    // Insert 1 word between consecutive words
+    if (i < wordsArray.length - 1) {
+      const rawNum = await fetchModNumber();
+      const randomIndex = Math.abs(rawNum) % wordList.length;
+      const cognateWord = wordList[randomIndex];
+      result.push(cognateWord);
+    }
+  }
+
+  return result;
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -180,7 +234,6 @@ document.addEventListener('DOMContentLoaded', () => {
           return token;
         }
 
-        // Define cleanWord explicitly inside the token map function
         const cleanWord = token.toLowerCase();
 
         // Strip articles and prepositions
@@ -189,42 +242,54 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const stem = getStem(cleanWord);
+        let resultToken = token;
 
-        // --- MODE EXECUTION LOGIC ---
-        
         // Mode 1: PIE only
         if (selectedMode === 'pie') {
           const res = findBestMatch(cleanWord, stem, PIE_DICTIONARY, threshold);
-          if (res.bestValue) return res.bestValue;
+          if (res.bestValue) resultToken = res.bestValue;
         }
 
         // Mode 2: Latin only
-        if (selectedMode === 'latin') {
+        else if (selectedMode === 'latin') {
           const res = findBestMatch(cleanWord, stem, LATIN_DICTIONARY, threshold);
-          if (res.bestValue) return res.bestValue;
+          if (res.bestValue) resultToken = res.bestValue;
         }
 
-        // Mode 3: Both (Fetch API number per word tie-breaker)
-        if (selectedMode === 'both') {
+        // Mode 3: Both
+        else if (selectedMode === 'both') {
           const pieRes = hasPIE ? findBestMatch(cleanWord, stem, PIE_DICTIONARY, threshold) : { bestValue: null };
           const latinRes = hasLatin ? findBestMatch(cleanWord, stem, LATIN_DICTIONARY, threshold) : { bestValue: null };
 
           if (pieRes.bestValue && latinRes.bestValue) {
-            // Fetch a fresh modulo for THIS specific word tie-breaker
             const num = await fetchModNumber();
             const wordMod = Math.abs(num) % 2; // 1 = PIE, 0 = Latin
-            return wordMod === 1 ? pieRes.bestValue : latinRes.bestValue;
+            resultToken = wordMod === 1 ? pieRes.bestValue : latinRes.bestValue;
+          } else if (pieRes.bestValue) {
+            resultToken = pieRes.bestValue;
+          } else if (latinRes.bestValue) {
+            resultToken = latinRes.bestValue;
           }
-          if (pieRes.bestValue) return pieRes.bestValue;
-          if (latinRes.bestValue) return latinRes.bestValue;
         }
 
-        return token;
+        // If a word match occurred, evaluate pickle_surprise before returning
+        if (resultToken !== token) {
+          return await pickle_surprise(resultToken, 0.5);
+        }
+
+        return resultToken;
       })
     );
 
-    const translatedSentence = translatedTokens
-      .join('')
+    // Filter down to valid words/tokens
+    let wordList = translatedTokens
+      .filter(t => t && t.trim().length > 0);
+
+    // Interleave 1 random English cognate from top_english_words between each word
+    wordList = await interleaveCognateWords(wordList);
+
+    const translatedSentence = wordList
+      .join(' ')
       .replace(/\s+/g, ' ')
       .trim();
 
