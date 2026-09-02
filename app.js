@@ -273,11 +273,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // If a word match occurred, evaluate pickle_surprise before returning
-        if (resultToken !== token) {
-          return await pickle_surprise(resultToken, 0.5);
-        }
+        return await pickle_surprise(resultToken, 0.5);
 
-        return resultToken;
       })
     );
 
