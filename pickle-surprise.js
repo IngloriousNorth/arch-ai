@@ -4,7 +4,7 @@
  * Stemmed with PorterStemmer1980
  */
 
-export const TOP_SHARED_ENGLISH_WORDS = [
+const TOP_SHARED_ENGLISH_WORDS = [
   "proven",
   "nephew",
   "september",
@@ -263,4 +263,3 @@ export const TOP_SHARED_ENGLISH_WORDS = [
   "thole"
 ];
 
-export default TOP_SHARED_ENGLISH_WORDS;
