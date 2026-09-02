@@ -3,7 +3,7 @@
  */
 const STOP_WORDS = new Set([
   // Articles & Pronouns
-  'a', 'an', 'the', 'that', 'there', 'what', 'who', 'where', 'why', 'when', 'how', 'is','and','or','not', 'it',
+  'a', 'an', 'the', 'that', 'there', 'what', 'who', 'where', 'why', 'when', 'how', 'is','and','or','not','it',
   // Prepositions
   'about', 'above', 'across', 'after', 'at', 'before', 'behind', 'below', 'beside', 
   'between', 'by', 'concerning', 'considering', 'despite', 'down', 'during', 'except', 
@@ -159,9 +159,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Retrieve endpoint number for modulo logic if mode is 'both'
     let targetMod = 1;
+    // REPLACE THIS SECTION IN YOUR .map() LOOP:
+
     if (selectedMode === 'both') {
-      const num = await fetchModNumber();
-      targetMod = Math.abs(num) % 2; // 1 = PIE, 0 = Latin
+      const pieRes = hasPIE ? findBestMatch(cleanWord, stem, PIE_DICTIONARY, threshold) : { bestValue: null };
+      const latinRes = hasLatin ? findBestMatch(cleanWord, stem, LATIN_DICTIONARY, threshold) : { bestValue: null };
+
+      if (pieRes.bestValue && latinRes.bestValue) {
+        // Generate a per-word tiebreaker (e.g., using Math.random or fetching per word)
+        const wordMod = Math.floor(Math.random() * 2); // 1 = PIE, 0 = Latin
+        return wordMod === 1 ? pieRes.bestValue : latinRes.bestValue;
+      }
+      if (pieRes.bestValue) return pieRes.bestValue;
+      if (latinRes.bestValue) return latinRes.bestValue;
     }
 
     // Preserve formatting, whitespace, and punctuation
