@@ -77,6 +77,19 @@ function jaroWinkler(s1, s2, p = 0.1) {
 }
 
 /**
+ * Helper to safely call Porter Stemmer whether defined as a function or class/object
+ */
+function getStem(word) {
+  if (typeof stemmer === 'function') {
+    return stemmer(word);
+  }
+  if (typeof PorterStemmer !== 'undefined' && typeof PorterStemmer.stem === 'function') {
+    return PorterStemmer.stem(word);
+  }
+  return word;
+}
+
+/**
  * Searches a target dictionary object for the best similarity match using Porter Stemmer fallback
  */
 function findBestMatch(word, stem, dictionary, threshold) {
@@ -93,7 +106,7 @@ function findBestMatch(word, stem, dictionary, threshold) {
     let score = jaroWinkler(word, key);
 
     // 2. Fall back to Porter Stemmer for words longer than 4 chars if below threshold
-    if (score < threshold && word.length > 4 && typeof stemmer !== 'undefined') {
+    if (score < threshold && word.length > 4) {
       const stemScore = jaroWinkler(stem, key);
       score = Math.max(score, stemScore);
     }
@@ -167,6 +180,7 @@ document.addEventListener('DOMContentLoaded', () => {
           return token;
         }
 
+        // Define cleanWord explicitly inside the token map function
         const cleanWord = token.toLowerCase();
 
         // Strip articles and prepositions
@@ -174,7 +188,7 @@ document.addEventListener('DOMContentLoaded', () => {
           return '';
         }
 
-        const stem = typeof stemmer !== 'undefined' ? stemmer(cleanWord) : cleanWord;
+        const stem = getStem(cleanWord);
 
         // --- MODE EXECUTION LOGIC ---
         
