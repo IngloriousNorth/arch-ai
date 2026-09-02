@@ -283,7 +283,6 @@ document.addEventListener('DOMContentLoaded', () => {
       .filter(t => t && t.trim().length > 0);
 
     // Interleave 1 random English cognate from top_english_words between each word
-    wordList = await interleaveCognateWords(wordList);
 
     const translatedSentence = wordList
       .join(' ')
