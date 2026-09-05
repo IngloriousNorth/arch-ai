@@ -10,6 +10,24 @@ const STOP_WORDS = new Set([
   'until', 'unto', 'up', 'upon', 'with', 'without'
 ]);
 
+// Basic Lexicon categories for syntactical insertion from TOP_SHARED_ENGLISH_WORDS
+const ENGLISH_LEXICON = {
+  adjectives: new Set([
+    "proven", "tense", "lithe", "dense", "thin", "mere", "ultramarine", "stupid", 
+    "nebulous", "blond", "regular", "tepid", "pulmonary", "senile", "sole", 
+    "long", "abstemious", "soporific", "real", "glad", "malleable", "small", 
+    "retrograde", "frigid", "sallow", "liminal", "plural", "tacit", "livid", 
+    "swart", "adroit", "acrimonious", "lame"
+  ]),
+  verbs: new Set([
+    "tremble", "install", "fumble", "bawl", "align", "penetrate", "abstain", "rest", 
+    "temporize", "amuse", "strew", "extenuate", "brush", "absorb", "grind", "sow", 
+    "observe", "spread", "rush", "stop", "remember", "think", "walk", "sew", 
+    "nutate", "change", "ride", "disturb", "pessimize", "deserve", "lift", 
+    "resile", "seep", "choose", "stand", "burgeon"
+  ])
+};
+
 function jaroDistance(s1, s2) {
   if (s1 === s2) return 1.0;
   const len1 = s1.length;
@@ -111,10 +129,22 @@ async function fetchModNumber() {
 }
 
 /**
- * pickle_surprise
- * Prepends a QRNG word to a translated token if Math.random() passes the threshold
+ * Conjugates base verbs to present 3rd person singular (e.g. "absorb" -> "absorbs")
  */
-async function pickle_surprise(translatedToken, chance = 0.5) {
+function conjugateVerb(verb) {
+  if (verb.endsWith("ch") || verb.endsWith("sh") || verb.endsWith("ss") || verb.endsWith("x")) {
+    return verb + "es";
+  }
+  if (verb.endsWith("y") && !/[aeiou]y$/i.test(verb)) {
+    return verb.slice(0, -1) + "ies";
+  }
+  return verb + "s";
+}
+
+/**
+ * Syntactically integrates a QRNG shared English word into the target token phrase
+ */
+async function integrateQrngWord(translatedToken, chance = 0.5) {
   if (!translatedToken || Math.random() > chance) {
     return translatedToken;
   }
@@ -123,16 +153,48 @@ async function pickle_surprise(translatedToken, chance = 0.5) {
     ? TOP_SHARED_ENGLISH_WORDS 
     : (window.TOP_SHARED_ENGLISH_WORDS || []);
 
-  if (wordList.length === 0) {
-    console.warn('pickle_surprise: TOP_SHARED_ENGLISH_WORDS is empty or unavailable.');
-    return translatedToken;
-  }
+  if (wordList.length === 0) return translatedToken;
 
   const num = await fetchModNumber();
   const qrngIndex = Math.abs(num) % wordList.length;
   const qrngWord = wordList[qrngIndex];
 
-  return `${qrngWord} ${translatedToken}`;
+  // Syntactically adapt the qrngWord based on its grammatical role
+  if (ENGLISH_LEXICON.adjectives.has(qrngWord)) {
+    return `${qrngWord} ${translatedToken}`;
+  } else if (ENGLISH_LEXICON.verbs.has(qrngWord)) {
+    return `${conjugateVerb(qrngWord)} ${translatedToken}`;
+  } else {
+    // Treat as noun or noun modifier
+    return `${qrngWord} ${translatedToken}`;
+  }
+}
+
+/**
+ * Cleans punctuation spacing and fixes dynamic "a" vs "an" article grammar
+ */
+function cleanAndFixSyntax(text) {
+  if (!text) return "";
+
+  let cleaned = text
+    .replace(/\s+/g, ' ')
+    .replace(/\s+([,.:;!?])/g, '$1')
+    .trim();
+
+  // Fix "a" vs "an" article agreement
+  cleaned = cleaned.replace(/\b(a|an)\s+([a-z]+)/gi, (match, article, nextWord) => {
+    const startsWithVowel = /^[aeiou]/i.test(nextWord);
+    const isCapital = article[0] === article[0].toUpperCase();
+    
+    if (startsWithVowel) {
+      return (isCapital ? "An" : "an") + " " + nextWord;
+    } else {
+      return (isCapital ? "A" : "a") + " " + nextWord;
+    }
+  });
+
+  // Ensure sentence capitalization
+  return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -179,8 +241,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const cleanWord = token.toLowerCase();
 
+        // Retain stop words in output so syntax remains structurally intact
         if (STOP_WORDS.has(cleanWord)) {
-          return '';
+          return token;
         }
 
         const stem = getStem(cleanWord);
@@ -207,20 +270,18 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         }
 
-        // Apply pickle_surprise directly when a match is found
         if (matchedTranslation) {
-          return await pickle_surprise(matchedTranslation, 0.5);
+          return await integrateQrngWord(matchedTranslation, 0.5);
         }
 
         return token;
       })
     );
 
-    const translatedSentence = translatedTokens
-      .join('')
-      .replace(/\s+/g, ' ')
-      .trim();
+    const rawSentence = translatedTokens.join('');
+    const finalSentence = cleanAndFixSyntax(rawSentence);
 
-    resultsDiv.innerHTML = `<p style="font-size: 1.1rem; line-height: 1.6;">${translatedSentence}</p>`;
+    resultsDiv.innerHTML = `<p style="font-size: 1.1rem; line-height: 1.6;">${finalSentence}</p>`;
   });
 });
+      
